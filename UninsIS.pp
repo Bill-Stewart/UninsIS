@@ -19,29 +19,29 @@
 {$H+}
 {$R *.res}
 
-library
-  UninsIS;
+library UninsIS;
 
 uses
   wsISPackage;
 
-function IsISPackageInstalled(AppId: pwidechar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
-  begin
+function IsISPackageInstalled(AppId: PWideChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
+begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
   result := InnoSetupPackage.IsInstalled();
-  end;
+end;
 
-function CompareISPackageVersion(AppId, InstallingVersion: pwidechar; Is64BitInstallMode, IsAdminInstallMode: DWORD): longint; stdcall;
-  begin
+function CompareISPackageVersion(AppId, InstallingVersion: PWideChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): LongInt;
+stdcall;
+begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
   result := InnoSetupPackage.CompareVersion(InstallingVersion);
-  end;
+end;
 
-function UninstallISPackage(AppId: pwidechar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
-  begin
+function UninstallISPackage(AppId: PWideChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
+begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
   result := InnoSetupPackage.Uninstall();
-  end;
+end;
 
 exports
   IsISPackageInstalled,

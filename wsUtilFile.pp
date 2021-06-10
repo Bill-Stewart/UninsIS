@@ -18,124 +18,126 @@
 {$MODE OBJFPC}
 {$H+}
 
-unit
-  wsUtilFile;
+unit wsUtilFile;
 
 interface
 
-function FileExists(const FileName: unicodestring): boolean;
+function FileExists(const FileName: UnicodeString): Boolean;
 
-function StartProcess(const CommandLine: unicodestring; var ProcessExitCode: DWORD): DWORD;
+function StartProcess(const CommandLine: UnicodeString; var ProcessExitCode: DWORD): DWORD;
 
 implementation
 
 uses
-  windows;
+  Windows;
 
 const
   INVALID_FILE_ATTRIBUTES = DWORD(-1);
 
 var
-  PerformWow64FsRedirection: boolean;
-  Wow64FsRedirectionOldValue: pointer;
+  PerformWow64FsRedirection: Boolean;
+  Wow64FsRedirectionOldValue: Pointer;
 
 procedure ToggleWow64FsRedirection();
-  begin
+begin
   if PerformWow64FsRedirection then
-    begin
+  begin
     if not Assigned(Wow64FsRedirectionOldValue) then
-      begin
+    begin
       if not Wow64DisableWow64FsRedirection(@Wow64FsRedirectionOldValue) then
         Wow64FsRedirectionOldValue := nil;
-      end
+    end
     else
-      begin
+    begin
       if Wow64RevertWow64FsRedirection(Wow64FsRedirectionOldValue) then
         Wow64FsRedirectionOldValue := nil;
-      end;
     end;
   end;
+end;
 
-function IsProcessWoW64(): boolean;
-  type
-    TIsWow64Process = function(hProcess: HANDLE; var Wow64Process: BOOL): BOOL; stdcall;
-  var
-    Kernel32: HMODULE;
-    IsWow64Process: TIsWow64Process;
-    ProcessHandle: HANDLE;
-    IsWoW64: BOOL;
-  begin
+function IsProcessWoW64(): Boolean;
+type
+  TIsWow64Process = function(hProcess: HANDLE; var Wow64Process: BOOL): BOOL; stdcall;
+var
+  Kernel32: HMODULE;
+  IsWow64Process: TIsWow64Process;
+  ProcessHandle: HANDLE;
+  IsWoW64: BOOL;
+begin
   result := false;
-  Kernel32 := GetModuleHandle('kernel32');
-  IsWow64Process := TIsWow64Process(GetProcAddress(Kernel32, 'IsWow64Process'));
+  Kernel32 := GetModuleHandle('kernel32');  // LPCSTR lpModuleName
+  IsWow64Process := TIsWow64Process(GetProcAddress(Kernel32,  // HMODULE hModule
+    'IsWow64Process'));                                       // LPCSTR  lpProcName
   if Assigned(IsWow64Process) then
-    begin
+  begin
     ProcessHandle := OpenProcess(PROCESS_QUERY_INFORMATION,  // DWORD dwDesiredAccess
-                                 true,                       // BOOL  bInheritHandle
-                                 GetCurrentProcessId());     // DWORD dwProcessId
+      true,                                                  // BOOL  bInheritHandle
+      GetCurrentProcessId());                                // DWORD dwProcessId
     if ProcessHandle <> 0 then
-      begin
-      if IsWow64Process(ProcessHandle, IsWoW64) then
+    begin
+      if IsWow64Process(ProcessHandle,  // HANDLE hProcess
+        IsWoW64) then                   // PBOOL  Wow64Process
         result := IsWoW64;
-      CloseHandle(ProcessHandle);
-      end;
+      CloseHandle(ProcessHandle);  // HANDLE hObject
     end;
   end;
+end;
 
-function FileExists(const FileName: unicodestring): boolean;
-  var
-    Attrs: DWORD;
-  begin
+function FileExists(const FileName: UnicodeString): Boolean;
+var
+  Attrs: DWORD;
+begin
   ToggleWow64FsRedirection();
-  Attrs := GetFileAttributesW(pwidechar(FileName));
+  Attrs := GetFileAttributesW(PWideChar(FileName));  // LPCWSTR lpFileName
   ToggleWow64FsRedirection();
-  result := (Attrs <> INVALID_FILE_ATTRIBUTES) and
-    ((Attrs and FILE_ATTRIBUTE_DIRECTORY) = 0);
-  end;
+  result := (Attrs <> INVALID_FILE_ATTRIBUTES) and ((Attrs and FILE_ATTRIBUTE_DIRECTORY) = 0);
+end;
 
-function StartProcess(const CommandLine: unicodestring; var ProcessExitCode: DWORD): DWORD;
-  var
-    StartInfo: STARTUPINFOW;
-    ProcInfo: PROCESS_INFORMATION;
-    OK: boolean;
-  begin
+function StartProcess(const CommandLine: UnicodeString; var ProcessExitCode: DWORD): DWORD;
+var
+  StartInfo: STARTUPINFOW;
+  ProcInfo: PROCESS_INFORMATION;
+  OK: Boolean;
+begin
   result := 0;
   FillChar(StartInfo, SizeOf(StartInfo), 0);
   StartInfo.cb := SizeOf(StartInfo);
   FillChar(ProcInfo, SizeOf(ProcInfo), 0);
   ToggleWow64FsRedirection();
-  OK := CreateProcessW(nil,                         // LPCWSTR               lpApplicationName
-                       pwidechar(CommandLine),      // LPWSTR                lpCommandLine
-                       nil,                         // LPSECURITY_ATTRIBUTES lpProcessAttributes
-                       nil,                         // LPSECURITY_ATTRIBUTES lpThreadAttributes
-                       true,                        // BOOL                  bInheritHandles
-                       CREATE_UNICODE_ENVIRONMENT,  // DWORD                 dwCreationFlags
-                       nil,                         // LPVOID                lpEnvironment
-                       nil,                         // LPCWSTR               lpCurrentDirectory
-                       StartInfo,                   // LPSTARTUPINFOW        lpStartupInfo
-                       ProcInfo);                   // LPPROCESS_INFORMATION lpProcessInformation
+  OK := CreateProcessW(nil,      // LPCWSTR               lpApplicationName
+    PWideChar(CommandLine),      // LPWSTR                lpCommandLine
+    nil,                         // LPSECURITY_ATTRIBUTES lpProcessAttributes
+    nil,                         // LPSECURITY_ATTRIBUTES lpThreadAttributes
+    true,                        // BOOL                  bInheritHandles
+    CREATE_UNICODE_ENVIRONMENT,  // DWORD                 dwCreationFlags
+    nil,                         // LPVOID                lpEnvironment
+    nil,                         // LPCWSTR               lpCurrentDirectory
+    StartInfo,                   // LPSTARTUPINFOW        lpStartupInfo
+    ProcInfo);                   // LPPROCESS_INFORMATION lpProcessInformation
   ToggleWow64FsRedirection();
   if OK then
+  begin
+    if WaitForSingleObject(ProcInfo.hProcess,  // HANDLE hHandle
+      INFINITE) <> WAIT_FAILED then            // DWORD  dwMilliseconds
     begin
-    if WaitForSingleObject(ProcInfo.hProcess, INFINITE) <> WAIT_FAILED then
-      begin
-      if not GetExitCodeProcess(ProcInfo.hProcess, ProcessExitCode) then
+      if not GetExitCodeProcess(ProcInfo.hProcess,  // HANDLE  hprocess
+        ProcessExitCode) then                       // LPDWORD lpexitCode
         result := GetLastError();
-      end
+    end
     else
       result := GetLastError();
-    CloseHandle(ProcInfo.hThread);
-    CloseHandle(ProcInfo.hProcess);
-    end
+    CloseHandle(ProcInfo.hThread);   // HANDLE hObject
+    CloseHandle(ProcInfo.hProcess);  // HANDLE hObject
+  end
   else
     result := GetLastError();
-  end;
+end;
 
 procedure InitializeUnit();
-  begin
+begin
   PerformWow64FsRedirection := IsProcessWoW64();
   Wow64FsRedirectionOldValue := nil;
-  end;
+end;
 
 initialization
   InitializeUnit();

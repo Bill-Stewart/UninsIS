@@ -18,13 +18,13 @@ https://github.com/Bill-Stewart/UninsIS/releases/
 
 Inno Setup is a powerful, freely available tool for building installers for the Windows OS platform.
 
-The Inno Setup philosophy for upgrading software is, put simply, install the new version "on top" of the old version. Files will be upgraded automatically according to version numbering rules (where selected/applicable), etc. However, there are some limitations:
+The Inno Setup philosophy for upgrading or downgrading software is, put simply, install the new version "on top" of the old version. Files will be overwritten or retained according to version numbering rules (where selected/applicable), etc. However, there are some limitations:
 
 * If a new version of an application makes obsolete any files installed by a previous version, the obsolete files remain on the target system after upgrading. This can be mitigated in simple use cases by using Inno Setup's `[InstallDelete]` section or custom code, but this has the potential to be awkward, unwieldy, and error-prone for larger setup projects.
 
 * The above problem can also apply to registry entries: Suppose an older version of an application stores configuration data using the Windows registry but a newer version uses text-based configuration files. Without custom code, the obsolete registry entries remain on the target system after an upgrade.
 
-* Downgrading an application is only possible by uninstalling a newer version and then installing an older version.
+* Unless file versioning is handled carefully, downgrading can result in a corrupted application due to mismatched file versions.
 
 Depending on your needs, it may be preferable to uninstall an existing installed version first. UninsIS.dll provides the following capabilities:
 
@@ -70,40 +70,34 @@ For example, you can use the UninsIS.dll functions to automatically uninstall an
     ```
     // Wrapper for UninsIS.dll IsISPackageInstalled() function
     // Returns true if package is detected as installed, or false otherwise
-    function IsISPackageInstalled(): boolean;
-      begin
-      result := DLLIsISPackageInstalled(
-        'Your_Appid_Here',                // AppId
-        DWORD(Is64BitInstallMode()),      // Is64BitInstallMode
-        DWORD(IsAdminInstallMode())       // IsAdminInstallMode
-      ) = 1;
-      end;
+    function IsISPackageInstalled(): Boolean;
+    begin
+      result := DLLIsISPackageInstalled('Your_Appid_Here',  // AppId
+        DWORD(Is64BitInstallMode()),                        // Is64BitInstallMode
+        DWORD(IsAdminInstallMode())) = 1;                   // IsAdminInstallMode
+    end;
 
     // Wrapper for UninsIS.dll CompareISPackageVersion() function
     // Returns:
     // < 0 if version we are installing is < installed version
     // 0   if version we are installing is = installed version
     // > 0 if version we are installing is > installed version
-    function CompareISPackageVersion(): longint;
-      begin
-      result := DLLCompareISPackageVersion(
-        'Your_AppId_Here',                   // AppId
-        'Your_AppVersion_Here',              // InstallingVersion
-        DWORD(Is64BitInstallMode()),         // Is64BitInstallMode
-        DWORD(IsAdminInstallMode())          // IsAdminInstallMode
-      );
-      end;
+    function CompareISPackageVersion(): LongInt;
+    begin
+      result := DLLCompareISPackageVersion('Your_AppId_Here',  // AppId
+        'Your_AppVersion_Here',                                // InstallingVersion
+        DWORD(Is64BitInstallMode()),                           // Is64BitInstallMode
+        DWORD(IsAdminInstallMode()));                          // IsAdminInstallMode
+    end;
 
     // Wrapper for UninsIS.dll UninstallISPackage() function
     // Returns 0 for success, non-zero for failure
     function UninstallISPackage(): DWORD;
-      begin
-      result := DLLUninstallISPackage(
-        'Your_AppId_Here',              // AppId
-        DWORD(Is64BitInstallMode()),    // Is64BitInstallMode
-        DWORD(IsAdminInstallMode())     // IsAdminInstallMode
-      );
-      end;
+    begin
+      result := DLLUninstallISPackage('Your_AppId_Here',  // AppId
+        DWORD(Is64BitInstallMode()),                      // Is64BitInstallMode
+        DWORD(IsAdminInstallMode()));                     // IsAdminInstallMode
+    end;
     ```
 
     In the above code, replace:
@@ -116,12 +110,12 @@ For example, you can use the UninsIS.dll functions to automatically uninstall an
 4.  In the `[Code]` section after the wrapper functions, add or update the `PrepareToInstall()` event function to use the wrapper functions:
 
     ```
-    function PrepareToInstall(var NeedsRestart: boolean): string;
-      begin
+    function PrepareToInstall(var NeedsRestart: Boolean): string;
+    begin
       result := '';
       if IsISPackageInstalled() and (CompareISPackageVersion() <> 0) then
         UninstallISPackage();
-      end;
+    end;
     ```
 
     Change the comparison with the `CompareISPackageVersion()` function to suit your needs:
@@ -175,7 +169,7 @@ DWORD IsISPackageInstalled(
 
 Pascal:
 ```
-function IsISPackageInstalled(AppId: pwidechar;
+function IsISPackageInstalled(AppId: PWideChar;
   Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
 ```
 
@@ -240,8 +234,8 @@ DWORD CompareISPackageVersion(
 
 Pascal:
 ```
-function CompareISPackageVersion(AppId, InstallingVersion: pwidechar;
-  Is64BitInstallMode, IsAdminInstallMode: DWORD): longint;
+function CompareISPackageVersion(AppId, InstallingVersion: PWideChar;
+  Is64BitInstallMode, IsAdminInstallMode: DWORD): LongInt;
 ```
 
 ### Parameters
@@ -305,7 +299,7 @@ DWORD UninstallISPackage(
 
 Pascal:
 ```
-function UninstallISPackage(AppId: pwidechar;
+function UninstallISPackage(AppId: PWideChar;
   Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
 ```
 

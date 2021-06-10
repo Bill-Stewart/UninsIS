@@ -18,115 +18,125 @@
 {$MODE OBJFPC}
 {$H+}
 
-unit
-  wsUtilReg;
+unit wsUtilReg;
 
 interface
 
 uses
-  windows;
+  Windows;
 
 const
-  HKEY_CURRENT_USER_64 = $80000101;
-  HKEY_CURRENT_USER_32 = $80000201;
+  HKEY_CURRENT_USER_64  = $80000101;
+  HKEY_CURRENT_USER_32  = $80000201;
   HKEY_LOCAL_MACHINE_64 = $80000102;
   HKEY_LOCAL_MACHINE_32 = $80000202;
 
 // NOTE: The RootKey parameter in the below functions can also be
-// HKEY_LOCAL_MACHINE_64 (works from 32-bit process) or HKEY_LOCAL_MACHINE_32
+// HKEY_LOCAL_MACHINE_64 or HKEY_LOCAL_MACHINE_32 (these work from 32-bit
+// processes)
 
 // Returns true if the specified registry subkey exists or false otherwise
-function RegKeyExists(RootKey: HKEY;
-                      const SubKeyName: unicodestring): boolean;
+function RegKeyExists(RootKey: HKEY; const SubKeyName: UnicodeString): Boolean;
 
 // Returns the ValueName value from the specified key and subkey into
 // ResultStr; returns true for success or false for failure
-function RegQueryStringValue(RootKey: HKEY;
-                             const SubKeyName, ValueName: unicodestring;
-                             var ResultStr: unicodestring): boolean;
+function RegQueryStringValue(RootKey: HKEY; const SubKeyName, ValueName: UnicodeString;
+  var ResultStr: UnicodeString): Boolean;
 
 implementation
 
 // Updates RootKey and AccessFlags appropriately if using _32 or _64 RootKey
 procedure UpdateRootKeyAndFlags(var RootKey: HKEY; var AccessFlags: REGSAM);
-  begin
+begin
   if (RootKey and KEY_WOW64_32KEY) <> 0 then
-    begin
+  begin
     RootKey := RootKey and (not KEY_WOW64_32KEY);
     AccessFlags := AccessFlags or KEY_WOW64_32KEY;
-    end
+  end
   else if (RootKey and KEY_WOW64_64KEY) <> 0 then
-    begin
+  begin
     RootKey := RootKey and (not KEY_WOW64_64KEY);
     AccessFlags := AccessFlags or KEY_WOW64_64KEY;
-    end;
   end;
+end;
 
-function RegKeyExists(RootKey: HKEY;
-                      const SubKeyName: unicodestring): boolean;
-  var
-    AccessFlags: REGSAM;
-    hkHandle: HANDLE;
-  begin
+function RegKeyExists(RootKey: HKEY; const SubKeyName: UnicodeString): Boolean;
+var
+  AccessFlags: REGSAM;
+  hkHandle: HANDLE;
+begin
   AccessFlags := KEY_READ;
   UpdateRootKeyAndFlags(RootKey, AccessFlags);
-  result := RegOpenKeyExW(RootKey,                // HKEY   hKey
-                          pwidechar(SubKeyName),  // LPCSTR lpSubKey
-                          0,                      // DWORD  ulOptions
-                          AccessFlags,            // REGSAM samDesired
-                          hkHandle) = 0;          // PHKEY  phkResult
+  result := RegOpenKeyExW(RootKey,  // HKEY   hKey
+    PWideChar(SubKeyName),          // LPCSTR lpSubKey
+    0,                              // DWORD  ulOptions
+    AccessFlags,                    // REGSAM samDesired
+    hkHandle) = 0;                  // PHKEY  phkResult
   if result then
     RegCloseKey(hkHandle);
-  end;
+end;
 
-function RegQueryStringValue(RootKey: HKEY;
-                             const SubKeyName, ValueName: unicodestring;
-                             var ResultStr: unicodestring): boolean;
-  var
-    AccessFlags: REGSAM;
-    hkHandle: HKEY;
-    ValueType, ValueSize: DWORD;
-    pData: pointer;
-  begin
+function RegQueryStringValue(RootKey: HKEY; const SubKeyName, ValueName: UnicodeString;
+  var ResultStr: UnicodeString): Boolean;
+var
+  AccessFlags: REGSAM;
+  hkHandle: HKEY;
+  ValueType, ValueSize, BufSize: DWORD;
+  pData, pBuf: Pointer;
+begin
   AccessFlags := KEY_READ;
   UpdateRootKeyAndFlags(RootKey, AccessFlags);
-  result := RegOpenKeyExW(RootKey,                // HKEY   hKey
-                          pwidechar(SubKeyName),  // LPCSTR lpSubKey
-                          0,                      // DWORD  ulOptions
-                          AccessFlags,            // REGSAM samDesired
-                          hkHandle) = 0;          // PHKEY  phkResult
+  result := RegOpenKeyExW(RootKey,  // HKEY   hKey
+    PWideChar(SubKeyName),          // LPCSTR lpSubKey
+    0,                              // DWORD  ulOptions
+    AccessFlags,                    // REGSAM samDesired
+    hkHandle) = 0;                  // PHKEY  phkResult
   if result then
-    begin
+  begin
     // First call: Get value size
-    result := RegQueryValueExW(hkHandle,              // HKEY    hKey
-                               pwidechar(ValueName),  // LPCSTR  lpValueName
-                               nil,                   // LPDWORD lpReserved
-                               @ValueType,            // LPDWORD lpType
-                               nil,                   // LPBYTE  lpData
-                               @ValueSize) = 0;       // LPDWORD lpcbData
+    result := RegQueryValueExW(hkHandle,  // HKEY    hKey
+      PWideChar(ValueName),               // LPCSTR  lpValueName
+      nil,                                // LPDWORD lpReserved
+      @ValueType,                         // LPDWORD lpType
+      nil,                                // LPBYTE  lpData
+      @ValueSize) = 0;                    // LPDWORD lpcbData
     if result then
-      begin
+    begin
       // Must be REG_SZ or REG_EXPAND_SZ
       if (ValueType = REG_SZ) or (ValueType = REG_EXPAND_SZ) then
-        begin
+      begin
         GetMem(pData, ValueSize);
         // Second call: Get value data
-        result := RegQueryValueExW(hkHandle,              // HKEY    hKey
-                                   pwidechar(ValueName),  // LPCSTR  lpValueName
-                                   nil,                   // LPDWORD lpReserved
-                                   @ValueType,            // LPDWORD lpType
-                                   pData,                 // LPBYTE  lpData
-                                   @ValueSize) = 0;       // LPDWORD lpcbData
+        result := RegQueryValueExW(hkHandle,  // HKEY    hKey
+          PWideChar(ValueName),               // LPCSTR  lpValueName
+          nil,                                // LPDWORD lpReserved
+          @ValueType,                         // LPDWORD lpType
+          pData,                              // LPBYTE  lpData
+          @ValueSize) = 0;                    // LPDWORD lpcbData
         if result then
-          ResultStr := pwidechar(pData);
+        begin
+          // Last char is null
+          if PWideChar(pData)[(ValueSize div SizeOf(WideChar)) - 1] = #0 then
+            ResultStr := PWideChar(pData)
+          else
+          begin
+            // Last char not null: Return as null-terminated string
+            BufSize := ValueSize + SizeOf(WideChar);
+            GetMem(pBuf, BufSize);
+            FillChar(pBuf^, BufSize, 0);
+            Move(pData^, pBuf^, ValueSize);
+            ResultStr := PWideChar(pBuf);
+            FreeMem(pBuf, BufSize);
+          end;
+        end;
         FreeMem(pData, ValueSize);
-        end
+      end
       else
         result := false;
-      end;
-    RegCloseKey(hkHandle);
     end;
+    RegCloseKey(hkHandle);
   end;
+end;
 
 begin
 end.
