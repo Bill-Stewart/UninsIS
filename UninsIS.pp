@@ -1,4 +1,4 @@
-{ Copyright (C) 2021 by Bill Stewart (bstewart at iname.com)
+{ Copyright (C) 2021-2023 by Bill Stewart (bstewart at iname.com)
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU Lesser General Public License as published by the Free
@@ -16,7 +16,7 @@
 }
 
 {$MODE OBJFPC}
-{$H+}
+{$MODESWITCH UNICODESTRINGS}
 {$R *.res}
 
 library UninsIS;
@@ -24,20 +24,68 @@ library UninsIS;
 uses
   wsISPackage;
 
-function IsISPackageInstalled(AppId: PWideChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
+type
+  int = Integer;
+  TStringMethod = function(): string of object;
+
+// Copies Source to Dest.
+procedure CopyString(const Source: string; Dest: PChar);
+var
+  NumChars: DWORD;
+begin
+  NumChars := Length(Source);
+  Move(Source[1], Dest^, NumChars * SizeOf(Char));
+  Dest[NumChars] := #0;
+end;
+
+// First parameter is address of string function you want to call. Returns
+// number of characters needed for output buffer, not including the terminating
+// null character.
+function GetString(var StringMethod: TStringMethod; Buffer: PChar; const NumChars: DWORD): DWORD;
+var
+  OutStr: string;
+begin
+  OutStr := StringMethod();
+  if (Length(OutStr) > 0) and Assigned(Buffer) and (NumChars >= Length(OutStr)) then
+    CopyString(OutStr, Buffer);
+  result := Length(OutStr);
+end;
+
+function IsISPackageInstalled(AppId: PChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
 begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
   result := InnoSetupPackage.IsInstalled();
 end;
 
-function CompareISPackageVersion(AppId, InstallingVersion: PWideChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): LongInt;
-stdcall;
+function GetISPackageVersion(AppId, Version: PChar; NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
+var
+  StringMethod: TStringMethod;
+begin
+  InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
+  StringMethod := @InnoSetupPackage.GetVersion;
+  result := GetString(StringMethod, Version, NumChars);
+end;
+
+function CompareISPackageVersion(AppId, InstallingVersion: PChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): int; stdcall;
 begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
   result := InnoSetupPackage.CompareVersion(InstallingVersion);
 end;
 
-function UninstallISPackage(AppId: PWideChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
+function TestVersionString(Version: PChar): DWORD; stdcall;
+begin
+  if wsTestVersionString(string(Version)) then
+    result := 1
+  else
+    result := 0;
+end;
+
+function CompareVersionStrings(Version1, Version2: PChar): int; stdcall;
+begin
+  result := wsCompareVersionStrings(string(Version1), string(Version2));
+end;
+
+function UninstallISPackage(AppId: PChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
 begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
   result := InnoSetupPackage.Uninstall();
@@ -45,6 +93,9 @@ end;
 
 exports
   IsISPackageInstalled,
+  GetISPackageVersion,
+  TestVersionString,
+  CompareVersionStrings,
   CompareISPackageVersion,
   UninstallISPackage;
 

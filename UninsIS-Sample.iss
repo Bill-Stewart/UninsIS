@@ -1,4 +1,4 @@
-; Copyright (C) 2021 by Bill Stewart (bstewart at iname.com)
+; Copyright (C) 2021-2023 by Bill Stewart (bstewart at iname.com)
 ;
 ; This program is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU Lesser General Public License as published by the Free
@@ -20,29 +20,27 @@
   #error This script requires Inno Setup 6 or later
 #endif
 
+#define AppName "UninsIS-Sample"
 #define AppGUID "{9F49B8E7-BAB8-40DB-A106-316CCCCE0823}"
-#define AppVersion "1.0.1.0"
+#define AppVersion "1.5.0.0"
 
 [Setup]
 AppId={{#AppGUID}
-AppName=UninsIS
+AppName={#AppName}
 AppVersion={#AppVersion}
 UsePreviousAppDir=false
-DefaultDirName={autopf}\UninsIS
+DefaultDirName={autopf}\{#AppName}
 Uninstallable=true
 OutputDir=.
-OutputBaseFilename=UninsIS-Setup
+OutputBaseFilename={#AppName}
 ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=none
 PrivilegesRequiredOverridesAllowed=dialog
 
 [Files]
 ; For importing DLL functions at setup
-Source: "x86\UninsIS.dll"; Flags: dontcopy
-; Other files to install on the target system
-Source: "x64\UninsIS.dll"; DestDir: "{app}"; Check: Is64BitInstallMode()
-Source: "x86\UninsIS.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode()
-Source: "README.md";       DestDir: "{app}"
+Source: "i386\UninsIS.dll"; DestDir: {app}
+Source: "README.md"; DestDir: {app}
 
 [Code]
 
@@ -53,8 +51,13 @@ function DLLIsISPackageInstalled(AppId: string; Is64BitInstallMode,
 
 // Import CompareISPackageVersion() function from UninsIS.dll at setup time
 function DLLCompareISPackageVersion(AppId, InstallingVersion: string;
-  Is64BitInstallMode, IsAdminInstallMode: DWORD): LongInt;
+  Is64BitInstallMode, IsAdminInstallMode: DWORD): Integer;
   external 'CompareISPackageVersion@files:UninsIS.dll stdcall setuponly';
+
+// Import GetISPackageVersion() function from UninsIS.dll at setup time
+function DLLGetISPackageVersion(AppId, Version: string;
+  NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
+  external 'GetISPackageVersion@files:UninsIS.dll stdcall setuponly';
 
 // Import UninstallISPackage() function from UninsIS.dll at setup time
 function DLLUninstallISPackage(AppId: string; Is64BitInstallMode,
@@ -74,12 +77,38 @@ begin
     Log('UninsIS.dll - Package not detected as installed');
 end;
 
+// Wrapper for UninsIS.dll GetISPackageVersion() function
+function GetISPackageVersion(): string;
+var
+  NumChars: DWORD;
+  OutStr: string;
+begin
+  result := '';
+  // First call: Get number of characters needed for version string
+  NumChars := DLLGetISPackageVersion('{#AppGUID}',  // AppId
+    '',                                             // Version
+    0,                                              // NumChars
+    DWORD(Is64BitInstallMode()),                    // Is64BitInstallMode
+    DWORD(IsAdminInstallMode()));                   // IsAdminInstallMode
+  // Allocate string to receive output
+  SetLength(OutStr, NumChars);
+  // Second call: Get version number string
+  if DLLGetISPackageVersion('{#AppGUID}',  // AppID
+    OutStr,                                // Version
+    NumChars,                              // NumChars
+    DWORD(Is64BitInstallMode()),           // Is64BitInstallMode
+    DWORD(IsAdminInstallMode())) > 0 then  // IsAdminInstallMode
+  begin
+    result := OutStr;
+  end;
+end;
+
 // Wrapper for UninsIS.dll CompareISPackageVersion() function
 // Returns:
 // < 0 if version we are installing is < installed version
 // 0   if version we are installing is = installed version
 // > 0 if version we are installing is > installed version
-function CompareISPackageVersion(): LongInt;
+function CompareISPackageVersion(): Integer;
 begin
   result := DLLCompareISPackageVersion('{#AppGUID}',  // AppId
     '{#AppVersion}',                                  // InstallingVersion
@@ -106,10 +135,16 @@ begin
     Log('UninsIS.dll - installed package uninstall did not complete successfully');
 end;
 
-
 function PrepareToInstall(var NeedsRestart: Boolean): string;
+var
+  Version: string;
 begin
   result := '';
+  if IsISPackageInstalled() then
+  begin
+    Version := GetISPackageVersion();
+    MsgBox('Package installed; version = ' + Version, mbInformation, MB_OK);
+  end;
   // If package installed, uninstall it automatically if the version we are
   // installing does not match the installed version; If you want to
   // automatically uninstall only...

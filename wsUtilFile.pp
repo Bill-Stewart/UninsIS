@@ -1,4 +1,4 @@
-{ Copyright (C) 2021 by Bill Stewart (bstewart at iname.com)
+{ Copyright (C) 2021-2023 by Bill Stewart (bstewart at iname.com)
 
   This program is free software: you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -16,15 +16,15 @@
 }
 
 {$MODE OBJFPC}
-{$H+}
+{$MODESWITCH UNICODESTRINGS}
 
 unit wsUtilFile;
 
 interface
 
-function FileExists(const FileName: UnicodeString): Boolean;
+function FileExists(const FileName: string): Boolean;
 
-function StartProcess(const CommandLine: UnicodeString; var ProcessExitCode: DWORD): DWORD;
+function StartProcess(const CommandLine: string; var ProcessExitCode: DWORD): DWORD;
 
 implementation
 
@@ -83,17 +83,17 @@ begin
   end;
 end;
 
-function FileExists(const FileName: UnicodeString): Boolean;
+function FileExists(const FileName: string): Boolean;
 var
   Attrs: DWORD;
 begin
   ToggleWow64FsRedirection();
-  Attrs := GetFileAttributesW(PWideChar(FileName));  // LPCWSTR lpFileName
+  Attrs := GetFileAttributesW(PChar(FileName));  // LPCWSTR lpFileName
   ToggleWow64FsRedirection();
   result := (Attrs <> INVALID_FILE_ATTRIBUTES) and ((Attrs and FILE_ATTRIBUTE_DIRECTORY) = 0);
 end;
 
-function StartProcess(const CommandLine: UnicodeString; var ProcessExitCode: DWORD): DWORD;
+function StartProcess(const CommandLine: string; var ProcessExitCode: DWORD): DWORD;
 var
   StartInfo: STARTUPINFOW;
   ProcInfo: PROCESS_INFORMATION;
@@ -105,7 +105,7 @@ begin
   FillChar(ProcInfo, SizeOf(ProcInfo), 0);
   ToggleWow64FsRedirection();
   OK := CreateProcessW(nil,      // LPCWSTR               lpApplicationName
-    PWideChar(CommandLine),      // LPWSTR                lpCommandLine
+    PChar(CommandLine),          // LPWSTR                lpCommandLine
     nil,                         // LPSECURITY_ATTRIBUTES lpProcessAttributes
     nil,                         // LPSECURITY_ATTRIBUTES lpThreadAttributes
     true,                        // BOOL                  bInheritHandles

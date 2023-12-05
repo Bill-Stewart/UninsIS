@@ -1,4 +1,4 @@
-{ Copyright (C) 2021 by Bill Stewart (bstewart at iname.com)
+{ Copyright (C) 2021-2023 by Bill Stewart (bstewart at iname.com)
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU Lesser General Public License as published by the Free
@@ -16,7 +16,7 @@
 }
 
 {$MODE OBJFPC}
-{$H+}
+{$MODESWITCH UNICODESTRINGS}
 
 unit wsISPackage;
 
@@ -33,20 +33,30 @@ type
   TInnoSetupPackage = class
   private
     MyIs64Bit, MyIsAdmin:  Boolean;
-    MyAppId, MySubKeyName: UnicodeString;
+    MyAppId, MySubKeyName: string;
     MyRootKey:             HKEY;
   public
     constructor Create();
-    procedure Init(const AppId: UnicodeString; const Is64BitInstallMode, IsAdminInstallMode: Boolean);
+    procedure Init(const AppId: string; const Is64BitInstallMode, IsAdminInstallMode: Boolean);
     function IsInstalled(): DWORD;
-    function Version(): UnicodeString;
-    function CompareVersion(const InstallingVersion: UnicodeString): LongInt;
+    function GetVersion(): string;
+    function CompareVersion(const InstallingVersion: string): LongInt;
     function Uninstall(): DWORD;
     destructor Destroy(); override;
-  end; //class
+  end;
 
 var
   InnoSetupPackage: TInnoSetupPackage;
+
+// Returns true if the string is a valid version string, or false otherwise
+function wsTestVersionString(const S: string): Boolean;
+
+// Compares two version strings 'a[.b[.c[.d]]]'
+// Returns:
+// < 0  if V1 < V2
+// 0    if V1 = V2
+// > 0  if V1 > V2
+function wsCompareVersionStrings(const V1, V2: string): LongInt;
 
 implementation
 
@@ -54,58 +64,132 @@ uses
   wsUtilFile,
   wsUtilReg;
 
-// Returns S as a longint; if conversion fails, returns Def
-function StrToIntDef(const S: UnicodeString; const Def: LongInt): LongInt;
+type
+  TStringArray = array of string;
+  TVersionArray = array[0..3] of Word;
+
+// Returns the number of times Substring appears in S
+function CountSubstring(const Substring, S: string): LongInt;
+var
+  P: LongInt;
+begin
+  result := 0;
+  P := Pos(Substring, S, 1);
+  while P <> 0 do
+  begin
+    Inc(result);
+    P := Pos(Substring, S, P + Length(Substring));
+  end;
+end;
+
+// Splits S into the Dest array using Delim as a delimiter
+procedure StrSplit(S, Delim: string; var Dest: TStringArray);
+var
+  I, P: LongInt;
+begin
+  I := CountSubstring(Delim, S);
+  // If no delimiters, Dest is a single-element array
+  if I = 0 then
+  begin
+    SetLength(Dest, 1);
+    Dest[0] := S;
+    exit;
+  end;
+  SetLength(Dest, I + 1);
+  for I := 0 to Length(Dest) - 1 do
+  begin
+    P := Pos(Delim, S);
+    if P > 0 then
+    begin
+      Dest[I] := Copy(S, 1, P - 1);
+      Delete(S, 1, P + Length(Delim) - 1);
+    end
+    else
+      Dest[I] := S;
+  end;
+end;
+
+function StrToInt(const S: string; var I: LongInt): Boolean;
 var
   Code: Word;
 begin
-  Val(S, result, Code);
-  if Code > 0 then
-    result := Def;
+  Val(S, I, Code);
+  result := Code = 0;
 end;
 
-// Compares two version strings 'a[.b[.c[.d]]]'
-// Returns:
-// < 0  if V1 < V2
-// 0    if V1 = V2
-// > 0  if V1 > V2
-function CompareVersionStrings(V1, V2: UnicodeString): LongInt;
+function StrToWord(const S: string; var W: Word): Boolean;
 var
-  P, N1, N2: LongInt;
+  Code: Word;
+begin
+  Val(S, W, Code);
+  result := Code = 0;
+end;
+
+function GetVersionArray(const S: string; var Version: TVersionArray): Boolean;
+var
+  A: TStringArray;
+  ALen, I, Part: LongInt;
+begin
+  result := false;
+  StrSplit(S, '.', A);
+  ALen := Length(A);
+  if ALen > 4 then
+    exit;
+  if ALen < 4 then
+  begin
+    SetLength(A, 4);
+    for I := ALen to 3 do
+      A[I] := '0';
+  end;
+  for I := 0 to Length(A) - 1 do
+  begin
+    result := StrToInt(A[I], Part);
+    if not result then
+      exit;
+    result := (Part >= 0) and (Part <= $FFFF);
+    if not result then
+      exit;
+  end;
+  for I := 0 to 3 do
+  begin
+    result := StrToWord(A[I], Version[I]);
+    if not result then
+      exit;
+  end;
+end;
+
+function wsTestVersionString(const S: string): Boolean;
+var
+  Version: TVersionArray;
+begin
+  result := GetVersionArray(S, Version);
+end;
+
+function wsCompareVersionStrings(const V1, V2: string): LongInt;
+var
+  Ver1, Ver2: TVersionArray;
+  I: LongInt;
+  Word1, Word2: Word;
 begin
   result := 0;
-  while (result = 0) and ((V1 <> '') or (V2 <> '')) do
+  if not GetVersionArray(V1, Ver1) then
+    exit;
+  if not GetVersionArray(V2, Ver2) then
+    exit;
+  for I := 0 to 3 do
   begin
-    P := Pos('.', V1);
-    if P > 0 then
+    Word1 := Ver1[I];
+    Word2 := Ver2[I];
+    if Word1 > Word2 then
     begin
-      N1 := StrToIntDef(Copy(V1, 1, P - 1), 0);
-      Delete(V1, 1, P);
-    end
-    else if V1 <> '' then
-    begin
-      N1 := StrToIntDef(V1, 0);
-      V1 := '';
-    end
-    else
-      N1 := 0;
-    P := Pos('.', V2);
-    if P > 0 then
-    begin
-      N2 := StrToIntDef(Copy(V2, 1, P - 1), 0);
-      Delete(V2, 1, P);
-    end
-    else if V2 <> '' then
-    begin
-      N2 := StrToIntDef(V2, 0);
-      V2 := '';
-    end
-    else
-      N2 := 0;
-    if N1 < N2 then
-      result := -1
-    else if N1 > N2 then
       result := 1;
+      exit;
+    end
+    else if Word1 < Word2 then
+    begin
+      result := -1;
+      exit;
+    end;
   end;
 end;
 
@@ -118,7 +202,7 @@ begin
   MyRootKey := 0;
 end;
 
-procedure TInnoSetupPackage.Init(const AppId: UnicodeString; const Is64BitInstallMode, IsAdminInstallMode: Boolean);
+procedure TInnoSetupPackage.Init(const AppId: string; const Is64BitInstallMode, IsAdminInstallMode: Boolean);
 begin
   if AppId = '' then
     exit();
@@ -156,9 +240,9 @@ begin
   end;
 end;
 
-function TInnoSetupPackage.Version(): UnicodeString;
+function TInnoSetupPackage.GetVersion(): string;
 var
-  DisplayVersion: UnicodeString;
+  DisplayVersion: string;
 begin
   result := '';
   if myAppId <> '' then
@@ -168,19 +252,19 @@ begin
   end;
 end;
 
-function TInnoSetupPackage.CompareVersion(const InstallingVersion: UnicodeString): LongInt;
+function TInnoSetupPackage.CompareVersion(const InstallingVersion: string): LongInt;
 var
-  CurrentVersion: UnicodeString;
+  CurrentVersion: string;
 begin
   result := 0;
-  CurrentVersion := Version();
+  CurrentVersion := GetVersion();
   if (CurrentVersion <> '') and (InstallingVersion <> '') then
-    result := CompareVersionStrings(InstallingVersion, CurrentVersion);
+    result := wsCompareVersionStrings(InstallingVersion, CurrentVersion);
 end;
 
 function TInnoSetupPackage.Uninstall(): DWORD;
 var
-  UninstallString, UninstallerFileName: UnicodeString;
+  UninstallString, UninstallerFileName: string;
   P, ProcessExitCode: DWORD;
 begin
   // Must call Init() first
