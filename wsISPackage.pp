@@ -262,10 +262,111 @@ begin
     result := wsCompareVersionStrings(InstallingVersion, CurrentVersion);
 end;
 
+function FindNthOccurrence(const SubStr, Str: String; N: Integer): Integer;
+var
+  I, Count: Integer;
+begin
+  Result := 0;
+  Count := 0;
+  for I := 1 to Length(Str) do
+  begin
+    if Copy(Str, I, Length(SubStr)) = SubStr then
+    begin
+      Inc(Count);
+      if Count = N then
+      begin
+        Result := I;
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+function RemoveParameter(UninstallString: String): String;
+var
+  PosFirstQuote, PosSecondQuote: Integer;
+begin
+  PosFirstQuote := Pos('"', UninstallString);
+  if PosFirstQuote > 0 then
+  begin
+    PosSecondQuote := FindNthOccurrence('"', UninstallString, 2);
+    if PosSecondQuote > 0 then
+    begin
+      Result := Copy(UninstallString, 1, PosSecondQuote);
+    end
+    else
+    begin
+      Result := UninstallString;
+    end;
+  end
+  else
+  begin
+    Result := UninstallString;
+  end;
+end;
+
+function RemoveQuotes(UninstallString: String): String;
+begin
+  if (Length(UninstallString) > 1) and (UninstallString[1] = '"') and (UninstallString[Length(UninstallString)] = '"') then
+  begin
+    Result := Copy(UninstallString, 2, Length(UninstallString) - 2);
+  end
+  else
+  begin
+    Result := UninstallString;
+  end;
+end;
+
+function Trim(const S: String): String;
+var
+  I, L: Integer;
+begin
+  L := Length(S);
+  I := 1;
+  while (I <= L) and (S[I] <= ' ') do Inc(I);
+  while (L >= I) and (S[L] <= ' ') do Dec(L);
+  Result := Copy(S, I, L - I + 1);
+end;
+
+procedure SplitCommandLine(const CmdLine: String; out ExeName, Params: String);
+var
+  PosFirstQuote, PosSecondQuote: Integer;
+begin
+  PosFirstQuote := Pos('"', CmdLine);
+  if PosFirstQuote > 0 then
+  begin
+    PosSecondQuote := FindNthOccurrence('"', CmdLine, 2);
+    if PosSecondQuote > 0 then
+    begin
+      ExeName := Copy(CmdLine, 1, PosSecondQuote);
+      Params := Trim(Copy(CmdLine, PosSecondQuote + 1, Length(CmdLine) - PosSecondQuote));
+    end
+    else
+    begin
+      ExeName := CmdLine;
+      Params := '';
+    end;
+  end
+  else
+  begin
+    PosFirstQuote := Pos(' ', CmdLine);
+    if PosFirstQuote > 0 then
+    begin
+      ExeName := Copy(CmdLine, 1, PosFirstQuote - 1);
+      Params := Trim(Copy(CmdLine, PosFirstQuote + 1, Length(CmdLine) - PosFirstQuote));
+    end
+    else
+    begin
+      ExeName := CmdLine;
+      Params := '';
+    end;
+  end;
+end;
+
 function TInnoSetupPackage.Uninstall(): DWORD;
 var
-  UninstallString, UninstallerFileName: string;
-  P, ProcessExitCode: DWORD;
+  UninstallString, UninstallerFileName, ExeName, Params: string;
+  ProcessExitCode: DWORD;
 begin
   // Must call Init() first
   if MyAppId = '' then
@@ -277,17 +378,12 @@ begin
     exit(ERROR_BAD_CONFIGURATION);
   // Get uninstaller file name
   UninstallerFileName := UninstallString;
-  // Remove '"' characters
-  P := Pos('"', UninstallerFileName);
-  while P > 0 do
-  begin
-    Delete(UninstallerFileName, P, 1);
-    P := Pos('"', UninstallerFileName);
-  end;
+  SplitCommandLine(UninstallerFileName, ExeName, Params);
+  UninstallerFileName := RemoveQuotes(ExeName);
   if not FileExists(UninstallerFileName) then
     exit(ERROR_BAD_CONFIGURATION);
   // Run uninstaller executable and wait until it closes
-  UninstallString := '"' + UninstallerFileName + '" /SILENT /SUPPRESSMSGBOXES /NORESTART';
+  UninstallString := '"' + UninstallerFileName + '" ' + Params + ' /SILENT /SUPPRESSMSGBOXES /NORESTART';
   result := StartProcess(UninstallString, ProcessExitCode);
   if result = 0 then
   begin
