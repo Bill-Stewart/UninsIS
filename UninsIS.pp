@@ -1,4 +1,4 @@
-{ Copyright (C) 2021-2023 by Bill Stewart (bstewart at iname.com)
+{ Copyright (C) 2021-2025 by Bill Stewart (bstewart at iname.com)
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU Lesser General Public License as published by the Free
@@ -22,7 +22,8 @@
 library UninsIS;
 
 uses
-  wsISPackage;
+  VersionStrings,  // https://github.com/Bill-Stewart/VersionStrings
+  ISPackage;
 
 type
   int = Integer;
@@ -66,6 +67,15 @@ begin
   result := GetString(StringMethod, Version, NumChars);
 end;
 
+function GetISPackageUninstallString(AppId, UninstallString: PChar; NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
+var
+  StringMethod: TStringMethod;
+begin
+  InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
+  StringMethod := @InnoSetupPackage.GetSilentUninstallCommandLine;
+  result := GetString(StringMethod, UninstallString, NumChars);
+end;
+
 function CompareISPackageVersion(AppId, InstallingVersion: PChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): int; stdcall;
 begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
@@ -74,7 +84,7 @@ end;
 
 function TestVersionString(Version: PChar): DWORD; stdcall;
 begin
-  if wsTestVersionString(string(Version)) then
+  if VersionStrings.TestVersionString(string(Version)) then
     result := 1
   else
     result := 0;
@@ -82,7 +92,7 @@ end;
 
 function CompareVersionStrings(Version1, Version2: PChar): int; stdcall;
 begin
-  result := wsCompareVersionStrings(string(Version1), string(Version2));
+  result := VersionStrings.CompareVersionStrings(string(Version1), string(Version2));
 end;
 
 function UninstallISPackage(AppId: PChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
@@ -94,6 +104,7 @@ end;
 exports
   IsISPackageInstalled,
   GetISPackageVersion,
+  GetISPackageUninstallString,
   TestVersionString,
   CompareVersionStrings,
   CompareISPackageVersion,

@@ -20,26 +20,31 @@ UninsIS.dll is a Windows DLL (dynamically linked library) to facilitate detectio
     - [Parameters](#parameters-1)
     - [Return Value](#return-value-1)
     - [Remarks](#remarks-1)
-  - [TestVersionString](#testversionstring)
+  - [GetIsPackageUninstallString](#getispackageuninstallstring)
     - [Syntax](#syntax-2)
     - [Parameters](#parameters-2)
     - [Return Value](#return-value-2)
     - [Remarks](#remarks-2)
-  - [CompareVersionStrings](#compareversionstrings)
+  - [TestVersionString](#testversionstring)
     - [Syntax](#syntax-3)
     - [Parameters](#parameters-3)
     - [Return Value](#return-value-3)
     - [Remarks](#remarks-3)
-  - [CompareISPackageVersion](#compareispackageversion)
+  - [CompareVersionStrings](#compareversionstrings)
     - [Syntax](#syntax-4)
     - [Parameters](#parameters-4)
     - [Return Value](#return-value-4)
     - [Remarks](#remarks-4)
-  - [UninstallISPackage](#uninstallispackage)
+  - [CompareISPackageVersion](#compareispackageversion)
     - [Syntax](#syntax-5)
     - [Parameters](#parameters-5)
     - [Return Value](#return-value-5)
     - [Remarks](#remarks-5)
+  - [UninstallISPackage](#uninstallispackage)
+    - [Syntax](#syntax-6)
+    - [Parameters](#parameters-6)
+    - [Return Value](#return-value-6)
+    - [Remarks](#remarks-6)
 
 
 # Author
@@ -142,11 +147,11 @@ For example, you can use the UninsIS.dll functions to automatically uninstall an
         DWORD(IsAdminInstallMode()));                        // IsAdminInstallMode
       SetLength(OutStr, NumChars);
       // Second call: Get version string
-      if DLLGetISPackageVersion('{#AppGUID}',  // AppID
-        OutStr,                                // Version
-        NumChars,                              // NumChars
-        DWORD(Is64BitInstallMode()),           // Is64BitInstallMode
-        DWORD(IsAdminInstallMode())) > 0 then  // IsAdminInstallMode
+      if DLLGetISPackageVersion('Your_Appid_Here',  // AppID
+        OutStr,                                     // Version
+        NumChars,                                   // NumChars
+        DWORD(Is64BitInstallMode()),                // Is64BitInstallMode
+        DWORD(IsAdminInstallMode())) > 0 then       // IsAdminInstallMode
       begin
         result := OutStr;
       end;
@@ -199,7 +204,7 @@ For example, you can use the UninsIS.dll functions to automatically uninstall an
     * `(CompareIsPackageVersion() <> 0)` - uninstall installed version if the version you are installing is different from the installed version (i.e., either downgrade or upgrade)
     * `(CompareIsPackageVersion() > 0)` - uninstall installed version if version you are installing is greater thanthe installed version (i.e., upgrade)
 
-See the sample UninsIS.iss script for a fully working example that also provides logging using the `Log` function (recommended).
+See the sample **UninsIS.iss** script for a fully working example that also provides logging using the `Log` function (recommended).
 
 # Technical Details
 
@@ -353,6 +358,65 @@ The function returns 0 if it failed, or non-zero if it succeeded.
 
 ---
 
+## GetIsPackageUninstallString
+
+The `GetIsPackageUninstallString` function retrieves the package's silent uninstall command line.
+
+### Syntax
+
+C/C++:
+```
+DWORD GetIsPackageUninstallString(
+  LPWSTR AppId,
+  LPWSTR UninstallString,
+  DWORD  NumChars,
+  DWORD  Is64BitInstallMode,
+  DWORD  IsAdminInstallMode
+);
+```
+
+Pascal:
+```
+function GetISPackageGetIsPackageUninstallStringVersion(AppId, UninstallString: PWideChar;
+  NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
+```
+
+### Parameters
+
+`AppId`
+
+A Unicode string containing the `AppId` of the Inno Setup package.
+
+`UninstallString`
+
+A pointer to a variable that receives a Unicode string that contains the silent uninstall command line for the current package.
+
+`NumChars`
+
+Specifies the number of characters needed to store the silent uninstall command line string, not including the terminating null character.
+
+`Is64BitInstallMode`
+
+Specify 1 if setup is using 64-bit install mode, or 0 otherwise.
+
+`IsAdminInstallMode`
+
+Specify 1 if setup is running in administrative install mode, or 0 otherwise.
+
+### Return Value
+
+The function returns 0 if it failed, or non-zero if it succeeded.
+
+### Remarks
+
+* The values for the `Is64BitInstallMode` and `IsAdminInstallMode` parameters can be passed to the function in the Inno Setup `[Code]` section by casting the Inno Setup functions of the same names to the `DWORD` type. See [Example Inno Setup Usage](#example-inno-setup-usage) for examples.
+
+* To get the uninstall command line string, call the function twice. In the first call to the function, specify a null pointer for the `UninstallString` parameter and `0` for the `NumChars` parameter. The function will return with the number of characters required for the buffer. Allocate a buffer of sufficient size (including the terminating null character), then call the function a second time to retrieve the string. See [Example Inno Setup Usage](#example-inno-setup-usage) for an example.
+
+* The return value of this function is only meaningful if the `IsISPackageInstalled` function's return value is 1 (i.e., the package is currently detected as installed).
+
+---
+
 ## TestVersionString
 
 The `TestVersionString` function tests whether a version string is valid.
@@ -499,6 +563,7 @@ The return value is zero if `InstallingVersion` contains an invalid version numb
 ## UninstallISPackage
 
 The `UninstallISPackage` function uninstalls an installed Inno Setup package.
+
 ### Syntax
 
 C/C++:

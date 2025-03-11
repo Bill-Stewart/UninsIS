@@ -1,4 +1,4 @@
-; Copyright (C) 2021-2023 by Bill Stewart (bstewart at iname.com)
+; Copyright (C) 2021-2025 by Bill Stewart (bstewart at iname.com)
 ;
 ; This program is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU Lesser General Public License as published by the Free
@@ -22,24 +22,25 @@
 
 #define AppName "UninsIS-Sample"
 #define AppGUID "{9F49B8E7-BAB8-40DB-A106-316CCCCE0823}"
-#define AppVersion "1.5.0.0"
+#define AppVersion "1.6.0.0"
 
 [Setup]
 AppId={{#AppGUID}
 AppName={#AppName}
 AppVersion={#AppVersion}
-UsePreviousAppDir=false
+UsePreviousAppDir=true
 DefaultDirName={autopf}\{#AppName}
 Uninstallable=true
 OutputDir=.
 OutputBaseFilename={#AppName}
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=none
 PrivilegesRequiredOverridesAllowed=dialog
+; UninstallLogging=yes
 
 [Files]
 ; For importing DLL functions at setup
-Source: "i386\UninsIS.dll"; DestDir: {app}
+Source: "i386\UninsIS.dll"; DestDir: {app}; Flags: ignoreversion
 Source: "README.md"; DestDir: {app}
 
 [Code]
@@ -58,6 +59,11 @@ function DLLCompareISPackageVersion(AppId, InstallingVersion: string;
 function DLLGetISPackageVersion(AppId, Version: string;
   NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
   external 'GetISPackageVersion@files:UninsIS.dll stdcall setuponly';
+
+// Import GetISPackageUninstallString() function from UninsIS.dll at setup time
+function DLLGetISPackageUninstallString(AppId, UninstallString: string;
+  NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
+  external 'GetISPackageUninstallString@files:UninsIS.dll stdcall setuponly';
 
 // Import UninstallISPackage() function from UninsIS.dll at setup time
 function DLLUninstallISPackage(AppId: string; Is64BitInstallMode,
@@ -122,6 +128,32 @@ begin
     Log('UninsIS.dll - This version {#AppVersion} newer than installed version');
 end;
 
+// Wrapper for UninsIS.dll GetISPackageUninstallString() function
+function GetISPackageUninstallString(): string;
+var
+  NumChars: DWORD;
+  OutStr: string;
+begin
+  result := '';
+  // First call: Get number of characters needed for version string
+  NumChars := DLLGetISPackageUninstallString('{#AppGUID}',  // AppId
+    '',                                                     // UninstallString
+    0,                                                      // NumChars
+    DWORD(Is64BitInstallMode()),                            // Is64BitInstallMode
+    DWORD(IsAdminInstallMode()));                           // IsAdminInstallMode
+  // Allocate string to receive output
+  SetLength(OutStr, NumChars);
+  // Second call: Get version number string
+  if DLLGetISPackageUninstallString('{#AppGUID}',  // AppID
+    OutStr,                                        // UninstallString
+    NumChars,                                      // NumChars
+    DWORD(Is64BitInstallMode()),                   // Is64BitInstallMode
+    DWORD(IsAdminInstallMode())) > 0 then          // IsAdminInstallMode
+  begin
+    result := OutStr;
+  end;
+end;
+
 // Wrapper for UninsIS.dll UninstallISPackage() function
 // Returns 0 for success, non-zero for failure
 function UninstallISPackage(): DWORD;
@@ -151,5 +183,8 @@ begin
   // ...when downgrading: change <> to <
   // ...when upgrading:   change <> to >
   if IsISPackageInstalled() and (CompareISPackageVersion() <> 0) then
+  begin
+    Log('Uninstall command - ' + GetISPackageUninstallString());
     UninstallISPackage();
+  end;
 end;

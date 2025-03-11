@@ -1,6 +1,6 @@
 1 VERSIONINFO
-FILEVERSION 1,5,0,0
-PRODUCTVERSION 1,5,0,0
+FILEVERSION 1,6,0,0
+PRODUCTVERSION 1,6,0,0
 FILEOS 0x4
 FILETYPE 2
 {
@@ -10,12 +10,12 @@ FILETYPE 2
     {
       VALUE "CompanyName", ""
       VALUE "FileDescription", "UninsIS.dll"
-      VALUE "FileVersion", "1.5.0.0"
+      VALUE "FileVersion", "1.6.0.0"
       VALUE "InternalName", "UninsIS.dll"
       VALUE "LegalCopyright", "Copyright 2021 by Bill Stewart (bstewart at iname.com)"
       VALUE "OriginalFilename", "UninsIS.dll"
       VALUE "ProductName", ""
-      VALUE "ProductVersion", "1.5.0.0"
+      VALUE "ProductVersion", "1.6.0.0"
     }
   }
 

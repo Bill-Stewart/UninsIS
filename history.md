@@ -1,5 +1,13 @@
 # UninsIS.dll Version History
 
+## 1.6.0 (11 Mar 2025)
+
+* Fix: Uninstall didn't work if the uninstall command in the registry included the `/LOG` parameter (or any other parameters). (Thanks to user gioros83 on GitHub for the report.)
+
+* Added the `GetISPackageUninstallString` function.
+
+* Improved code to use other released units.
+
 ## 1.5.0 (5 Dec 2023)
 
 * Added the `GetISPackageVersion`, `TestVersionString`, and `CompareVersionStrings` functions.
