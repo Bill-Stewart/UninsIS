@@ -67,12 +67,12 @@ begin
   result := GetString(StringMethod, Version, NumChars);
 end;
 
-function GetISPackageUninstallString(AppId, UninstallString: PChar; NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
+function GetISPackageUninstallString(AppId, UninstallString: PChar; NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD, VerySilent: Boolean = False): DWORD; stdcall;
 var
   StringMethod: TStringMethod;
 begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
-  StringMethod := @InnoSetupPackage.GetSilentUninstallCommandLine;
+  StringMethod := InnoSetupPackage.GetSilentUninstallCommandLine(VerySilent);
   result := GetString(StringMethod, UninstallString, NumChars);
 end;
 
@@ -95,10 +95,10 @@ begin
   result := VersionStrings.CompareVersionStrings(string(Version1), string(Version2));
 end;
 
-function UninstallISPackage(AppId: PChar; Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD; stdcall;
+function UninstallISPackage(AppId: PChar; Is64BitInstallMode, IsAdminInstallMode: DWORD, VerySilent: Boolean = False): DWORD; stdcall;
 begin
   InnoSetupPackage.Init(AppId, Is64BitInstallMode <> 0, IsAdminInstallMode <> 0);
-  result := InnoSetupPackage.Uninstall();
+  result := InnoSetupPackage.Uninstall(VerySilent);
 end;
 
 exports

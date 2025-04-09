@@ -43,8 +43,8 @@ type
     function IsInstalled(): DWORD;
     function GetVersion(): string;
     function CompareVersion(const InstallingVersion: string): Integer;
-    function GetSilentUninstallCommandLine(): string;
-    function Uninstall(): DWORD;
+    function GetSilentUninstallCommandLine(const VerySilent: Boolean = False): string;
+    function Uninstall(const VerySilent: Boolean = False): DWORD;
     destructor Destroy(); override;
   end;
 
@@ -193,8 +193,8 @@ begin
     result := CompareVersionStrings(InstallingVersion, CurrentVersion);
 end;
 
-function TInnoSetupPackage.GetSilentUninstallCommandLine(): string;
-const
+function TInnoSetupPackage.GetSilentUninstallCommandLine(const VerySilent: Boolean = False): string;
+var
   // Inno Setup command-line parameters required for silent uninstall
   SilentArgs: array[0..2] of string = (
     '/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
@@ -207,6 +207,11 @@ begin
   // Must call Init() first
   if MyAppId = '' then
     exit;
+  
+  // Use /VERYSILENT instead of /SILENT if VerySilent is True
+  if VerySilent then
+    SilentArgs[0] := '/VERYSILENT';
+
   // Uninstall command not cached yet
   if MyUninstallCommand = '' then
   begin
@@ -239,7 +244,7 @@ begin
   result := '"' + MyUninstallCommand + '" ' + MyUninstallArgs;
 end;
 
-function TInnoSetupPackage.Uninstall(): DWORD;
+function TInnoSetupPackage.Uninstall(const VerySilent: Boolean = False): DWORD;
 var
   UninstallCommandLine: string;
   ProcessExitCode: DWORD;
@@ -250,7 +255,7 @@ begin
   // Package not detected
   if IsInstalled() <> 1 then
     exit(ERROR_UNKNOWN_PRODUCT);
-  UninstallCommandLine := GetSilentUninstallCommandLine();
+  UninstallCommandLine := GetSilentUninstallCommandLine(VerySilent);
   if (UninstallCommandLine = '') or (not FileExists(MyUninstallCommand)) then
     exit(ERROR_BAD_CONFIGURATION);
   result := StartProcess(UninstallCommandLine, ProcessExitCode);

@@ -62,12 +62,12 @@ function DLLGetISPackageVersion(AppId, Version: string;
 
 // Import GetISPackageUninstallString() function from UninsIS.dll at setup time
 function DLLGetISPackageUninstallString(AppId, UninstallString: string;
-  NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
+  NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD, VerySilent: Boolean = False): DWORD;
   external 'GetISPackageUninstallString@files:UninsIS.dll stdcall setuponly';
 
 // Import UninstallISPackage() function from UninsIS.dll at setup time
 function DLLUninstallISPackage(AppId: string; Is64BitInstallMode,
-  IsAdminInstallMode: DWORD): DWORD;
+  IsAdminInstallMode: DWORD, VerySilent: Boolean = False): DWORD;
   external 'UninstallISPackage@files:UninsIS.dll stdcall setuponly';
 
 // Wrapper for UninsIS.dll IsISPackageInstalled() function

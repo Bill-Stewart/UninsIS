@@ -371,14 +371,15 @@ DWORD GetIsPackageUninstallString(
   LPWSTR UninstallString,
   DWORD  NumChars,
   DWORD  Is64BitInstallMode,
-  DWORD  IsAdminInstallMode
+  DWORD  IsAdminInstallMode,
+  BOOL   VerySilent
 );
 ```
 
 Pascal:
 ```
 function GetISPackageGetIsPackageUninstallStringVersion(AppId, UninstallString: PWideChar;
-  NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
+  NumChars, Is64BitInstallMode, IsAdminInstallMode: DWORD, VerySilent: Boolean): DWORD;
 ```
 
 ### Parameters
@@ -402,6 +403,12 @@ Specify 1 if setup is using 64-bit install mode, or 0 otherwise.
 `IsAdminInstallMode`
 
 Specify 1 if setup is running in administrative install mode, or 0 otherwise.
+
+`VerySilent`
+
+Specify `True` if the command line should use the `/VERYSILENT` parameter, or `False` if it should use the `/SILENT` parameter.
+
+Default is `False`.
 
 ### Return Value
 
@@ -571,14 +578,15 @@ C/C++:
 DWORD UninstallISPackage(
   LPWSTR AppId,
   DWORD  Is64BitInstallMode,
-  DWORD  IsAdminInstallMode
+  DWORD  IsAdminInstallMode,
+  BOOL   VerySilent
 );
 ```
 
 Pascal:
 ```
 function UninstallISPackage(AppId: PWideChar;
-  Is64BitInstallMode, IsAdminInstallMode: DWORD): DWORD;
+  Is64BitInstallMode, IsAdminInstallMode: DWORD, VerySilent Boolean): DWORD;
 ```
 
 ### Parameters
@@ -595,6 +603,12 @@ Specify 1 if setup is using 64-bit install mode, or 0 otherwise.
 
 Specify 1 if setup is running in administrative install mode, or 0 otherwise.
 
+`VerySilent`
+
+Specify `True` if the command line should use the `/VERYSILENT` parameter, or `False` if it should use the `/SILENT` parameter.
+
+Default is `False`.
+
 ### Return Value
 
 The function returns 0 if the specified package uninstall completed successfully, or non-zero otherwise.
@@ -603,6 +617,6 @@ The function returns 0 if the specified package uninstall completed successfully
 
 * The values for the `Is64BitInstallMode` and `IsAdminInstallMode` parameters can be passed to the function in the Inno Setup `[Code]` section by casting the Inno Setup functions of the same names to the `DWORD` type. See [Example Inno Setup Usage](#example-inno-setup-usage) for examples.
 
-* The function uses the `UninstallString` string value in the package's registry subkey to determine the filename of the uninstaller executable. It then executes the uninstaller executable using the `/SILENT`, `/SUPPRESSMSGBOXES`, and `/NORESTART` command line parameters. If the uninstaller process completes with an exit code of zero (no errors), the function then waits for the uninstaller executable file to be deleted.
+* The function uses the `UninstallString` string value in the package's registry subkey to determine the filename of the uninstaller executable. It then executes the uninstaller executable using the `/SILENT`(or `/VERYSILENT`), `/SUPPRESSMSGBOXES`, and `/NORESTART` command line parameters. If the uninstaller process completes with an exit code of zero (no errors), the function then waits for the uninstaller executable file to be deleted.
 
 * The function will return with an error code if the specified package is not detected as installed, so it is recommended to use this function only when `IsISPackageInstalled` returns 1 (i.e., the package is currently detected as installed).
