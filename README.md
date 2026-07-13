@@ -89,14 +89,21 @@ For example, you can use the UninsIS.dll functions to automatically uninstall an
 
 # Example Inno Setup Usage
 
-1.  Add the **UninsIS.dll** file to your Inno Setup script's `[Files]` section:
+1.  If you are using Inno Setup 6.x, or if you are building a 32-bit installer for Inno Setup 7.x or later, add the 32-bit **UninsIS.dll** file to your Inno Setup script's `[Files]` section; e.g.:
 
     ```
     [Files]
-    Source: "UninsIS.dll"; Flags: dontcopy
+    Source: "i386\UninsIS.dll"; Flags: dontcopy
     ```
 
-    You can use the `dontcopy` flag because the DLL is used only during setup (not uninstall).
+    If you are building a 64-bit installer for Inno Setup 7.x or later (i.e., you are using `SetupArchitecture=x64` in your `[Setup]` section), specify the 64-bit **UninsIS.dll** file instead; e.g.:
+
+    ```
+    [Files]
+    Source: "x86_64\UninsIS.dll"; Flags: dontcopy
+    ```
+
+    Use the `dontcopy` flag because the DLL is used only during setup (not uninstall).
 
 2.  In the `[Code]` section, import the needed DLL functions for setup only:
 
@@ -225,9 +232,8 @@ In order to properly detect an installed package, these functions need 3 pieces 
 
 For 32-bit vs. 64-bit and administrative vs. non administrative install modes registry data locations, see the following table:
 
-| Install mode        | Administrative       | Non administrative  |            |
+| Install mode        | Administrative Root  | Non administrative  | Subkey
 | ------------------- | -------------------- | ------------------- | ---------- |
-|                     | **Root**             | **Root**            | **Subkey**
 | 32-bit on 32-bit OS | `HKEY_LOCAL_MACHINE` | `HKEY_CURRENT_USER` | Software\Microsoft\Windows\CurrentVersion\Uninstall
 | 64-bit on 64-bit OS | `HKEY_LOCAL_MACHINE` | `HKEY_CURRENT_USER` | Software\Microsoft\Windows\CurrentVersion\Uninstall
 | 32-bit on 64-bit OS | `HKEY_LOCAL_MACHINE` | `HKEY_CURRENT_USER` | Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall

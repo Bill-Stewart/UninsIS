@@ -1,5 +1,9 @@
 # UninsIS.dll Version History
 
+## 1.6.1 (13 Jul 2026)
+
+* Added 64-bit (x86_64) DLL for 64-bit Inno Setup installers.
+
 ## 1.6.0 (11 Mar 2025)
 
 * Fix: Uninstall didn't work if the uninstall command in the registry included the `/LOG` parameter (or any other parameters). (Thanks to user gioros83 on GitHub for the report.)

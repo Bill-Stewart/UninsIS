@@ -1,4 +1,4 @@
-; Copyright (C) 2021-2025 by Bill Stewart (bstewart at iname.com)
+; Copyright (C) 2021-2026 by Bill Stewart (bstewart at iname.com)
 ;
 ; This program is free software; you can redistribute it and/or modify it under
 ; the terms of the GNU Lesser General Public License as published by the Free
@@ -16,13 +16,13 @@
 ; Sample Inno Setup (https://www.jrsoftware.org/isinfo.php) script
 ; demonstrating use of UninsIS.dll.
 
-#if Ver < EncodeVer(6,0,0,0)
-  #error This script requires Inno Setup 6 or later
+#if Ver < EncodeVer(7,0,2,0)
+  #error This script requires Inno Setup 7.0.2 or later
 #endif
 
 #define AppName "UninsIS-Sample"
 #define AppGUID "{9F49B8E7-BAB8-40DB-A106-316CCCCE0823}"
-#define AppVersion "1.6.0.0"
+#define AppVersion "1.6.1.0"
 
 [Setup]
 AppId={{#AppGUID}
@@ -36,11 +36,10 @@ OutputBaseFilename={#AppName}
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=none
 PrivilegesRequiredOverridesAllowed=dialog
-; UninstallLogging=yes
+SetupArchitecture=x64
 
 [Files]
-; For importing DLL functions at setup
-Source: "i386\UninsIS.dll"; DestDir: {app}; Flags: ignoreversion
+Source: "x86_64\UninsIS.dll"; DestDir: {app}; Flags: ignoreversion; Check: IsCurrentProcess64Bit()
 Source: "README.md"; DestDir: {app}
 
 [Code]
