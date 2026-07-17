@@ -1,5 +1,9 @@
 # UninsIS.dll Version History
 
+## 1.7.0 (17 Jul 2026)
+
+* Improved command line detection code.
+
 ## 1.6.1 (13 Jul 2026)
 
 * Added 64-bit (x86_64) DLL for 64-bit Inno Setup installers.

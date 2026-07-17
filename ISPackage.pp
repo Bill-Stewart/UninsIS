@@ -59,7 +59,6 @@ uses
   WindowsString,    // https://github.com/Bill-Stewart/WindowsString
   FileUtils;
 
-// Removes leading and trailing spaces from string
 function Trim(const S: string): string;
 var
   Len, P: Integer;
@@ -76,43 +75,44 @@ end;
 // Splits a command line string into command name and arguments
 procedure SplitCommandLine(CommandLine: string; out CommandName, Args: string);
 var
-  P1, P2: Integer;
+  DPos: Integer;  // Delimiter position (quote or space)
 begin
   CommandLine := Trim(CommandLine);
   // Check if command name is quoted
-  P1 := Pos('"', CommandLine);
-  if P1 > 0 then
+  if Pos('"', CommandLine) = 1 then
   begin
     // Find end quote (if any)
-    P2 := Pos('"', CommandLine, P1 + 1);
-    if P2 > 0 then
+    DPos := Pos('"', CommandLine, 2);
+    if DPos > 0 then
     begin
       // Copy starting after first quote and up to but not including end quote
-      CommandName := Trim(Copy(CommandLine, P1 + 1, P2 - P1 - 1));
+      CommandName := Trim(Copy(CommandLine, 2, DPos - 2));
       // Args start after end quote
-      Args := Trim(Copy(CommandLine, P2 + 1, Length(CommandLine) - P2));
+      Args := Trim(Copy(CommandLine, DPos + 1, Length(CommandLine) - DPos));
     end
     else
     begin
       // No end quote found; copy rest of string after starting quote
-      CommandName := Trim(Copy(CommandLine, P1 + 1, Length(CommandLine) - P1));
+      CommandName := Trim(Copy(CommandLine, 2, Length(CommandLine) - 1));
       Args := '';
     end;
   end
   else
   begin
-    // Command name not quoted; check for space (i.e., args specified)
-    P2 := Pos(' ', CommandLine);
-    if P2 > 0 then
+    // Command name not quoted; check for whitespace (i.e., args exist)
+    DPos := Pos(' ', CommandLine);
+    if DPos = 0 then
+      DPos := Pos(#9, CommandLine);
+    if DPos > 0 then
     begin
       // Copy from start up to but not including space
-      CommandName := Trim(Copy(CommandLine, 1, P2 - P1 - 1));
+      CommandName := Trim(Copy(CommandLine, 1, DPos - 1));
       // Args start after space
-      Args := Trim(Copy(CommandLine, P2 + 1, Length(CommandLine) - P2));
+      Args := Trim(Copy(CommandLine, DPos + 1, Length(CommandLine) - DPos));
     end
     else
     begin
-      // No space found; command name is command line
+      // No whitespace found; command name is command line
       CommandName := CommandLine;
       Args := '';
     end;
